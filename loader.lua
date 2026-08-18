@@ -1,11 +1,14 @@
 -- sB Hub v1 - GitHub loader (faithful split)
 local BASE = "https://raw.githubusercontent.com/sssBHub/sB-Hub-v1/12a7841f8723825886f546b282c197c38ce1845d/"
 
--- Stop the previous run before creating another one.
+-- Shared lifecycle flag. Every module loop is rewritten to honor this.
+sBHubAlive = true
+running = true
+
+-- Stop previous run before creating another one.
 pcall(function()
-    if type(running) == "boolean" then
-        running = false
-    end
+    sBHubAlive = false
+    running = false
     if type(connections) == "table" then
         for _, c in ipairs(connections) do
             pcall(function() c:Disconnect() end)
@@ -13,6 +16,9 @@ pcall(function()
         table.clear(connections)
     end
 end)
+
+sBHubAlive = true
+running = true
 
 pcall(function()
     local p = game:GetService("Players").LocalPlayer
@@ -37,10 +43,15 @@ local function loadModule(fileName)
         error("[sB Hub] Download failed: " .. fileName .. "\n" .. tostring(source))
     end
 
+    -- All long-running modules share the same lifecycle flag.
+    source = source:gsub("while running do", "while running and sBHubAlive do")
+
     if fileName == "ui.lua" then
+        -- Use direct mouse click signals and make controls explicitly active.
         source = source:gsub("%.Activated", ".MouseButton1Click")
     elseif fileName == "runtime.lua" then
         source = source:gsub("[\r\n]+dragStart[ \t]*[\r\n]+startPosition", "\ndragStart = nil\nstartPosition = nil", 1)
+        -- Runtime does not own title-bar dragging; loader does.
         source = source:gsub("connect%(%s*titleBar%.InputBegan.-%end%)%s*%)", "", 1)
         source = source:gsub("connect%(%s*UserInputService%.InputChanged.-%end%)%s*%)", "", 1)
         source = source:gsub("connect%(%s*UserInputService%.InputEnded.-%end%)%s*%)", "", 1)
@@ -68,19 +79,19 @@ loadModule("stats.lua")
 loadModule("overlays.lua")
 loadModule("runtime.lua")
 
--- Make every control explicitly interactive.
+-- Make every GUI control explicitly interactive and add a second input path.
 pcall(function()
-    if gui then
-        for _, object in ipairs(gui:GetDescendants()) do
-            if object:IsA("GuiButton") then
-                object.Active = true
-                object.Selectable = true
-            end
+    if not gui then return end
+    for _, object in ipairs(gui:GetDescendants()) do
+        if object:IsA("GuiButton") then
+            object.Active = true
+            pcall(function() object.Interactable = true end)
+            object.Selectable = true
         end
     end
 end)
 
--- Add a dedicated, always-visible emergency button.
+-- Always-visible emergency button. This bypasses module unload handlers.
 pcall(function()
     if not gui or not titleBar then
         error("UI objects were not created")
@@ -102,53 +113,67 @@ pcall(function()
     kill.Font = FONT
     kill.AutoButtonColor = true
     kill.Active = true
+    pcall(function() kill.Interactable = true end)
     kill.Selectable = true
     kill.ZIndex = 10010
     kill.Parent = titleBar
 
-    kill.MouseButton1Click:Connect(function()
+    local function killHub()
+        sBHubAlive = false
         running = false
+
+        task.wait()
+
         if type(connections) == "table" then
             for _, c in ipairs(connections) do
                 pcall(function() c:Disconnect() end)
             end
             table.clear(connections)
         end
+
         pcall(function() destroyAllESP() end)
         pcall(function() if jungleBillboard then jungleBillboard:Destroy() end end)
         pcall(function() if gui and gui.Parent then gui:Destroy() end end)
         pcall(function() if overlayGui and overlayGui.Parent then overlayGui:Destroy() end end)
-        print("[sB Hub] Killed")
+
+        print("[sB Hub] Killed - lifecycle stopped")
+    end
+
+    kill.MouseButton1Click:Connect(killHub)
+    kill.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            killHub()
+        end
     end)
 
     print("[sB Hub] KILL HUB installed")
 end)
 
--- Own window dragging here so there is exactly one drag controller.
+-- One and only one drag controller.
 pcall(function()
-    if not gui or not window or not titleBar then
-        return
-    end
+    if not gui or not window or not titleBar then return end
 
     local UIS = game:GetService("UserInputService")
     titleBar.Active = true
+    pcall(function() titleBar.Interactable = true end)
 
     local dragging = false
     local dragStart = nil
     local startPosition = nil
 
-    local function onBegin(input)
+    table.insert(connections, titleBar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
             dragStart = input.Position
             startPosition = window.Position
         end
-    end
+    end))
 
-    local function onChanged(input)
+    table.insert(connections, UIS.InputChanged:Connect(function(input)
         if not dragging then return end
         if input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
         if not window or not window.Parent then return end
+
         local delta = input.Position - dragStart
         window.Position = UDim2.new(
             startPosition.X.Scale,
@@ -156,17 +181,13 @@ pcall(function()
             startPosition.Y.Scale,
             startPosition.Y.Offset + delta.Y
         )
-    end
+    end))
 
-    local function onEnded(input)
+    table.insert(connections, UIS.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = false
         end
-    end
-
-    table.insert(connections, titleBar.InputBegan:Connect(onBegin))
-    table.insert(connections, UIS.InputChanged:Connect(onChanged))
-    table.insert(connections, UIS.InputEnded:Connect(onEnded))
+    end))
 end)
 
 print("[sB Hub] Faithful modular build loaded")
