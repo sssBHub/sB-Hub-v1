@@ -1,6 +1,5 @@
 -- sB Hub v1 - GitHub loader (faithful split)
--- Pin the module base to the commit containing the syntax-fixed config.lua.
-local BASE = "https://raw.githubusercontent.com/sssBHub/sB-Hub-v1/20fe985aeb7a2a37c908957514205419f147ca0c/"
+local BASE = "https://raw.githubusercontent.com/sssBHub/sB-Hub-v1/b9415196049ac28edad3a9172d6633ed5e17cdd1/"
 
 local function loadModule(fileName)
     local url = BASE .. fileName
