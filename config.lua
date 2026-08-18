@@ -24,21 +24,17 @@ state = {
     autoRebirth = false,
     rebirthLimit = false,
     rebirthTarget = 1000,
-
     autoJungleRock = false,
     autoEgg = false,
     autoUltimates = false,
-
     autoSize = false,
     autoSpeed = false,
     sizeMode = "Max",
     speedMode = "Max",
     sizeCustom = 2,
     speedCustom = 93,
-
     skipRebirthAnimation = false,
     antiAFK = false,
-
     esp = false,
     espBoxes = true,
     espNames = true,
@@ -47,28 +43,22 @@ state = {
     espTracers = false,
     espTeamCheck = false,
     espMaxDistance = 1500,
-
     coords = false,
     coordsCompass = true,
     coordsHeading = true,
     coordsPitch = true,
-
     automationOverlay = true,
     performanceOverlay = true,
-
     notifications = true,
     petNotifications = true,
     auraNotifications = true,
     rarityNotifications = true,
-
     rareBasic = false,
     rareRare = false,
     rareEpic = true,
     rareUnique = true,
     rareAdvanced = true,
-
     serverSpyAutoRefresh = true,
-
     muteStrength = false,
     muteRebirth = false,
 }
@@ -110,18 +100,18 @@ gems = player:FindFirstChild("Gems")
 durability = player:FindFirstChild("Durability")
 startingDurability = durability and tonumber(durability.Value) or 0
 
-character
-humanoid
-root
-gameGui
-rebirthButton
+character = nil
+humanoid = nil
+root = nil
+gameGui = nil
+rebirthButton = nil
 
 currentExercise = "None"
 currentRock = "OFF"
 currentUltimate = "Idle"
 
 junglePositioned = false
-jungleBillboard
+jungleBillboard = nil
 
 connections = {}
 espEntries = {}
@@ -150,7 +140,7 @@ fps = 0
 frameCounter = 0
 lastFpsTime = os.clock()
 
-GlobalFunctions
+GlobalFunctions = nil
 
 pcall(function()
     GlobalFunctions = require(
@@ -211,28 +201,16 @@ end
 function fmt(value)
     value = tonumber(value) or 0
     local a = math.abs(value)
-
-    if a >= 1e12 then
-        return string.format("%.2fT", value / 1e12)
-    elseif a >= 1e9 then
-        return string.format("%.2fB", value / 1e9)
-    elseif a >= 1e6 then
-        return string.format("%.2fM", value / 1e6)
-    elseif a >= 1e3 then
-        return string.format("%.2fK", value / 1e3)
-    end
-
+    if a >= 1e12 then return string.format("%.2fT", value / 1e12)
+    elseif a >= 1e9 then return string.format("%.2fB", value / 1e9)
+    elseif a >= 1e6 then return string.format("%.2fM", value / 1e6)
+    elseif a >= 1e3 then return string.format("%.2fK", value / 1e3) end
     return string.format("%.0f", value)
 end
 
 function formatTime(seconds)
     seconds = math.max(0, math.floor(tonumber(seconds) or 0))
-    return string.format(
-        "%02d:%02d:%02d",
-        math.floor(seconds / 3600),
-        math.floor(seconds / 60) % 60,
-        seconds % 60
-    )
+    return string.format("%02d:%02d:%02d", math.floor(seconds / 3600), math.floor(seconds / 60) % 60, seconds % 60)
 end
 
 function rankToText(rank)
@@ -240,103 +218,31 @@ function rankToText(rank)
 end
 
 function saveConfig()
-    local data = {
-        state = state,
-        goal = goal,
-        hotkeys = hotkeys,
-        selectedPets = selectedPets,
-        selectedAuras = selectedAuras,
-    }
-
-    local ok, encoded = pcall(
-        HttpService.JSONEncode,
-        HttpService,
-        data
-    )
-
-    if not ok then
-        return
-    end
-
-    if typeof(writefile) == "function" then
-        pcall(function()
-            writefile(saveName, encoded)
-        end)
-    end
-
+    local data = {state = state, goal = goal, hotkeys = hotkeys, selectedPets = selectedPets, selectedAuras = selectedAuras}
+    local ok, encoded = pcall(HttpService.JSONEncode, HttpService, data)
+    if not ok then return end
+    if typeof(writefile) == "function" then pcall(function() writefile(saveName, encoded) end) end
     local env = getgenv and getgenv()
-
-    if env then
-        env.sBHubSavedConfig = data
-    end
+    if env then env.sBHubSavedConfig = data end
 end
 
 function loadConfig()
     local data
-
     local env = getgenv and getgenv()
-
-    if env and env.sBHubSavedConfig then
-        data = env.sBHubSavedConfig
-    end
-
-    if not data and typeof(isfile) == "function"
-        and typeof(readfile) == "function"
-        and isfile(saveName) then
-
+    if env and env.sBHubSavedConfig then data = env.sBHubSavedConfig end
+    if not data and typeof(isfile) == "function" and typeof(readfile) == "function" and isfile(saveName) then
         local ok, raw = pcall(readfile, saveName)
-
         if ok and raw then
-            local decodedOk, decoded =
-                pcall(
-                    HttpService.JSONDecode,
-                    HttpService,
-                    raw
-                )
-
-            if decodedOk then
-                data = decoded
-            end
+            local decodedOk, decoded = pcall(HttpService.JSONDecode, HttpService, raw)
+            if decodedOk then data = decoded end
         end
     end
-
-    if type(data) ~= "table" then
-        return
-    end
-
-    if type(data.state) == "table" then
-        for key, value in pairs(data.state) do
-            if state[key] ~= nil then
-                state[key] = value
-            end
-        end
-    end
-
-    if type(data.goal) == "table" then
-        for key, value in pairs(data.goal) do
-            if goal[key] ~= nil then
-                goal[key] = value
-            end
-        end
-    end
-
-    if type(data.hotkeys) == "table" then
-        for key, value in pairs(data.hotkeys) do
-            if hotkeys[key] ~= nil then
-                hotkeys[key] = value
-            end
-        end
-    end
-
-    if type(data.selectedPets) == "table" then
-        selectedPets = data.selectedPets
-    end
-
-    if type(data.selectedAuras) == "table" then
-        selectedAuras = data.selectedAuras
-    end
+    if type(data) ~= "table" then return end
+    if type(data.state) == "table" then for key, value in pairs(data.state) do if state[key] ~= nil then state[key] = value end end end
+    if type(data.goal) == "table" then for key, value in pairs(data.goal) do if goal[key] ~= nil then goal[key] = value end end end
+    if type(data.hotkeys) == "table" then for key, value in pairs(data.hotkeys) do if hotkeys[key] ~= nil then hotkeys[key] = value end end end
+    if type(data.selectedPets) == "table" then selectedPets = data.selectedPets end
+    if type(data.selectedAuras) == "table" then selectedAuras = data.selectedAuras end
 end
 
 loadConfig()
-
--- module end
