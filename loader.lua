@@ -14,7 +14,8 @@ local function loadModule(fileName)
     end
 
     if fileName == "runtime.lua" then
-        source = source:gsub("\ndragStart\nstartPosition", "\ndragStart = nil\nstartPosition = nil", 1)
+        source = source:gsub("dragStart%s*%c+%s*startPosition", "dragStart = nil\nstartPosition = nil", 1)
+        source = source:gsub("%f[%a]dragStart%f[%A]%s*%f[%a]startPosition%f[%A]", "dragStart = nil\nstartPosition = nil", 1)
     end
 
     print("[sB Hub] Downloaded:", fileName, #source, "bytes")
