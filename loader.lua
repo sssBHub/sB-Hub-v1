@@ -124,7 +124,6 @@ gui.Enabled = true
 gui.ResetOnSpawn = false
 gui.IgnoreGuiInset = true
 gui.DisplayOrder = 100000
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 
 window = window or gui:FindFirstChildWhichIsA("Frame")
 if not window then
@@ -133,38 +132,7 @@ end
 
 window.Parent = gui
 window.Visible = true
-window.ZIndex = 100000
-
-if tabBar then
-    tabBar.Visible = true
-    tabBar.ZIndex = 100005
-    tabBar.Active = true
-    pcall(function() tabBar.Interactable = true end)
-end
-
-if content then
-    content.Visible = true
-    content.ZIndex = 100004
-end
-
-if pages then
-    for _, page in pairs(pages) do
-        if page then
-            page.ZIndex = 100006
-        end
-    end
-end
-
-if tabs then
-    for _, button in pairs(tabs) do
-        if button then
-            button.Visible = true
-            button.Active = true
-            button.ZIndex = 100007
-            pcall(function() button.Interactable = true end)
-        end
-    end
-end
+window.ZIndex = 1000
 
 for _, object in ipairs(gui:GetDescendants()) do
     if object:IsA("GuiButton") then
@@ -180,8 +148,19 @@ if type(showTab) == "function" then
     end)
 end
 
-if pages and pages.main then
-    pages.main.Visible = true
+if tabBar then
+    tabBar.Visible = true
+    tabBar.ZIndex = 1001
+end
+
+if content then
+    content.Visible = true
+    content.ZIndex = 1000
+end
+
+for _, button in pairs(tabs or {}) do
+    button.Visible = true
+    button.ZIndex = 1002
 end
 
 print(
@@ -190,10 +169,7 @@ print(
     "parent=", tostring(gui.Parent and gui.Parent.Name),
     "windowVisible=", tostring(window.Visible),
     "windowAbsoluteSize=", tostring(window.AbsoluteSize),
-    "windowAbsolutePosition=", tostring(window.AbsolutePosition),
-    "tabBar=", tostring(tabBar and tabBar.Visible),
-    "tabs=", tostring(tabs and next(tabs) ~= nil),
-    "mainPage=", tostring(pages and pages.main and pages.main.Visible)
+    "windowAbsolutePosition=", tostring(window.AbsolutePosition)
 )
 
 if titleBar then
@@ -215,7 +191,7 @@ if titleBar then
     kill.Active = true
     pcall(function() kill.Interactable = true end)
     kill.Selectable = true
-    kill.ZIndex = 100010
+    kill.ZIndex = 10010
     kill.Parent = titleBar
 
     local function killHub()
