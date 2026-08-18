@@ -92,16 +92,54 @@ loadModule("stats.lua")
 loadModule("overlays.lua")
 loadModule("runtime.lua")
 
+-- Force the final UI into a known visible state.
 pcall(function()
-    if gui then
-        for _, object in ipairs(gui:GetDescendants()) do
-            if object:IsA("GuiButton") then
-                object.Active = true
-                pcall(function() object.Interactable = true end)
-                object.Selectable = true
-            end
+    local plr = game:GetService("Players").LocalPlayer
+    local pg = plr and plr:FindFirstChild("PlayerGui")
+
+    if not pg then
+        error("PlayerGui missing")
+    end
+
+    gui = pg:FindFirstChild("sB_Hub_v1") or gui
+    overlayGui = pg:FindFirstChild("sB_Overlays") or overlayGui
+
+    if not gui then
+        error("sB_Hub_v1 was not created")
+    end
+
+    gui.Parent = pg
+    gui.Enabled = true
+    gui.ResetOnSpawn = false
+    gui.IgnoreGuiInset = true
+    gui.DisplayOrder = 100000
+
+    if window then
+        window.Parent = gui
+        window.Visible = true
+    else
+        window = gui:FindFirstChildWhichIsA("Frame")
+        if window then
+            window.Visible = true
         end
     end
+
+    for _, object in ipairs(gui:GetDescendants()) do
+        if object:IsA("GuiButton") then
+            object.Active = true
+            pcall(function() object.Interactable = true end)
+            object.Selectable = true
+        end
+    end
+
+    print(
+        "[sB Hub] GUI state:",
+        "exists=", gui ~= nil,
+        "enabled=", gui.Enabled,
+        "parent=", gui.Parent and gui.Parent.Name or "nil",
+        "window=", window ~= nil,
+        "visible=", window and window.Visible or false
+    )
 end)
 
 pcall(function()
