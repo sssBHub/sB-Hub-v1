@@ -1,14 +1,9 @@
 -- sB Hub v1 - GitHub loader (faithful split)
-local BASE = "https://raw.githubusercontent.com/sssBHub/sB-Hub-v1/12a7841f8723825886f546b282c197c38ce1845d/"
+local BASE = "https://raw.githubusercontent.com/sssBHub/sB-Hub-v1/main/"
 
--- Shared lifecycle flag. Every module loop is rewritten to honor this.
-sBHubAlive = true
-running = true
-
--- Stop previous run before creating another one.
+sBHubAlive = false
+running = false
 pcall(function()
-    sBHubAlive = false
-    running = false
     if type(connections) == "table" then
         for _, c in ipairs(connections) do
             pcall(function() c:Disconnect() end)
@@ -16,9 +11,6 @@ pcall(function()
         table.clear(connections)
     end
 end)
-
-sBHubAlive = true
-running = true
 
 pcall(function()
     local p = game:GetService("Players").LocalPlayer
@@ -31,8 +23,11 @@ pcall(function()
     end
 end)
 
+sBHubAlive = true
+running = true
+
 local function loadModule(fileName)
-    local url = BASE .. fileName
+    local url = BASE .. fileName .. "?v=" .. tostring(os.clock()):gsub("%.", "")
     print("[sB Hub] Downloading:", fileName)
 
     local ok, source = pcall(function()
@@ -43,15 +38,10 @@ local function loadModule(fileName)
         error("[sB Hub] Download failed: " .. fileName .. "\n" .. tostring(source))
     end
 
-    -- All long-running modules share the same lifecycle flag.
     source = source:gsub("while running do", "while running and sBHubAlive do")
 
-    if fileName == "ui.lua" then
-        -- Use direct mouse click signals and make controls explicitly active.
-        source = source:gsub("%.Activated", ".MouseButton1Click")
-    elseif fileName == "runtime.lua" then
+    if fileName == "runtime.lua" then
         source = source:gsub("[\r\n]+dragStart[ \t]*[\r\n]+startPosition", "\ndragStart = nil\nstartPosition = nil", 1)
-        -- Runtime does not own title-bar dragging; loader does.
         source = source:gsub("connect%(%s*titleBar%.InputBegan.-%end%)%s*%)", "", 1)
         source = source:gsub("connect%(%s*UserInputService%.InputChanged.-%end%)%s*%)", "", 1)
         source = source:gsub("connect%(%s*UserInputService%.InputEnded.-%end%)%s*%)", "", 1)
@@ -62,10 +52,12 @@ local function loadModule(fileName)
     if not chunk then
         error("[sB Hub] Compile failed: " .. fileName .. "\n" .. tostring(compileError))
     end
+
     local success, result = pcall(chunk)
     if not success then
         error("[sB Hub] Runtime error: " .. fileName .. "\n" .. tostring(result))
     end
+
     return result
 end
 
@@ -79,26 +71,23 @@ loadModule("stats.lua")
 loadModule("overlays.lua")
 loadModule("runtime.lua")
 
--- Make every GUI control explicitly interactive and add a second input path.
 pcall(function()
-    if not gui then return end
-    for _, object in ipairs(gui:GetDescendants()) do
-        if object:IsA("GuiButton") then
-            object.Active = true
-            pcall(function() object.Interactable = true end)
-            object.Selectable = true
+    if gui then
+        for _, object in ipairs(gui:GetDescendants()) do
+            if object:IsA("GuiButton") then
+                object.Active = true
+                pcall(function() object.Interactable = true end)
+                object.Selectable = true
+            end
         end
     end
 end)
 
--- Always-visible emergency button. This bypasses module unload handlers.
 pcall(function()
-    if not gui or not titleBar then
-        error("UI objects were not created")
-    end
+    if not gui or not titleBar then error("UI objects were not created") end
 
-    local existing = titleBar:FindFirstChild("sB_KillHub")
-    if existing then existing:Destroy() end
+    local oldKill = titleBar:FindFirstChild("sB_KillHub")
+    if oldKill then oldKill:Destroy() end
 
     local kill = Instance.new("TextButton")
     kill.Name = "sB_KillHub"
@@ -121,42 +110,30 @@ pcall(function()
     local function killHub()
         sBHubAlive = false
         running = false
-
         task.wait()
-
         if type(connections) == "table" then
-            for _, c in ipairs(connections) do
-                pcall(function() c:Disconnect() end)
-            end
+            for _, c in ipairs(connections) do pcall(function() c:Disconnect() end) end
             table.clear(connections)
         end
-
         pcall(function() destroyAllESP() end)
         pcall(function() if jungleBillboard then jungleBillboard:Destroy() end end)
         pcall(function() if gui and gui.Parent then gui:Destroy() end end)
         pcall(function() if overlayGui and overlayGui.Parent then overlayGui:Destroy() end end)
-
         print("[sB Hub] Killed - lifecycle stopped")
     end
 
     kill.MouseButton1Click:Connect(killHub)
     kill.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            killHub()
-        end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then killHub() end
     end)
-
     print("[sB Hub] KILL HUB installed")
 end)
 
--- One and only one drag controller.
 pcall(function()
     if not gui or not window or not titleBar then return end
-
     local UIS = game:GetService("UserInputService")
     titleBar.Active = true
     pcall(function() titleBar.Interactable = true end)
-
     local dragging = false
     local dragStart = nil
     local startPosition = nil
@@ -168,25 +145,14 @@ pcall(function()
             startPosition = window.Position
         end
     end))
-
     table.insert(connections, UIS.InputChanged:Connect(function(input)
-        if not dragging then return end
-        if input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
+        if not dragging or input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
         if not window or not window.Parent then return end
-
         local delta = input.Position - dragStart
-        window.Position = UDim2.new(
-            startPosition.X.Scale,
-            startPosition.X.Offset + delta.X,
-            startPosition.Y.Scale,
-            startPosition.Y.Offset + delta.Y
-        )
+        window.Position = UDim2.new(startPosition.X.Scale, startPosition.X.Offset + delta.X, startPosition.Y.Scale, startPosition.Y.Offset + delta.Y)
     end))
-
     table.insert(connections, UIS.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
     end))
 end)
 
