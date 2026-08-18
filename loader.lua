@@ -1,8 +1,9 @@
 -- sB Hub v1 - GitHub loader (faithful split)
-local BASE = "https://raw.githubusercontent.com/sssBHub/sB-Hub-v1/main/"
+-- Pin the module base to the commit containing the syntax-fixed config.lua.
+local BASE = "https://raw.githubusercontent.com/sssBHub/sB-Hub-v1/20fe985aeb7a2a37c908957514205419f147ca0c/"
 
 local function loadModule(fileName)
-    local url = BASE .. fileName .. "?v=" .. tostring(os.time())
+    local url = BASE .. fileName
     print("[sB Hub] Downloading:", fileName)
     local ok, source = pcall(function() return game:HttpGet(url) end)
     if not ok then error("[sB Hub] Download failed: " .. fileName .. "\n" .. tostring(source)) end
@@ -14,7 +15,6 @@ local function loadModule(fileName)
     return result
 end
 
--- The original script is intentionally loaded in dependency order.
 loadModule("config.lua")
 loadModule("ui.lua")
 loadModule("automation.lua")
