@@ -142,6 +142,12 @@ for _, object in ipairs(gui:GetDescendants()) do
     end
 end
 
+if type(showTab) == "function" then
+    pcall(function()
+        showTab("main")
+    end)
+end
+
 print(
     "[sB Hub] GUI state:",
     "enabled=", tostring(gui.Enabled),
