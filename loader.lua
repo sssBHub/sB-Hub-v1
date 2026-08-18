@@ -19,6 +19,8 @@ if pg then
     if old then old:Destroy() end
     local oldOverlay = pg:FindFirstChild("sB_Overlays")
     if oldOverlay then oldOverlay:Destroy() end
+    local oldDiagnostic = pg:FindFirstChild("sB_Hub_RenderTest")
+    if oldDiagnostic then oldDiagnostic:Destroy() end
 end
 
 sBHubAlive = true
@@ -75,95 +77,102 @@ loadModule("stats.lua")
 loadModule("overlays.lua")
 loadModule("runtime.lua")
 
--- Do not hide errors from the final GUI setup.
-local function ensureVisibleGui()
-    local currentPlayerGui = plr:FindFirstChild("PlayerGui")
-    if not currentPlayerGui then
-        error("[sB Hub] PlayerGui missing after module load")
-    end
-
-    local screen = currentPlayerGui:FindFirstChild("sB_Hub_v1")
-    print("[sB Hub] Post-load GUI lookup:", screen and "FOUND" or "MISSING")
-
-    if not screen then
-        error("[sB Hub] sB_Hub_v1 was not created by ui.lua")
-    end
-
-    gui = screen
-    gui.Parent = currentPlayerGui
-    gui.Enabled = true
-    gui.ResetOnSpawn = false
-    gui.IgnoreGuiInset = true
-    gui.DisplayOrder = 100000
-
-    window = window or gui:FindFirstChildWhichIsA("Frame")
-    if not window then
-        error("[sB Hub] sB_Hub_v1 exists but contains no Frame window")
-    end
-
-    window.Parent = gui
-    window.Visible = true
-    window.ZIndex = math.max(window.ZIndex, 1000)
-
-    for _, object in ipairs(gui:GetDescendants()) do
-        if object:IsA("GuiButton") then
-            object.Active = true
-            pcall(function() object.Interactable = true end)
-            object.Selectable = true
-        end
-    end
-
-    print(
-        "[sB Hub] GUI state:",
-        "enabled=", tostring(gui.Enabled),
-        "parent=", tostring(gui.Parent and gui.Parent.Name),
-        "windowVisible=", tostring(window.Visible),
-        "windowPosition=", tostring(window.Position)
-    )
+local currentPlayerGui = plr:FindFirstChild("PlayerGui")
+if not currentPlayerGui then
+    error("[sB Hub] PlayerGui missing after module load")
 end
 
-local setupOk, setupErr = pcall(ensureVisibleGui)
-if not setupOk then
-    warn(tostring(setupErr))
+local screen = currentPlayerGui:FindFirstChild("sB_Hub_v1")
+print("[sB Hub] Post-load GUI lookup:", screen and "FOUND" or "MISSING")
 
-    -- Guaranteed fallback so the executor cannot silently produce nothing.
-    local currentPlayerGui = plr:FindFirstChild("PlayerGui")
-    if currentPlayerGui then
-        local fallback = Instance.new("ScreenGui")
-        fallback.Name = "sB_Hub_Diagnostic"
-        fallback.ResetOnSpawn = false
-        fallback.IgnoreGuiInset = true
-        fallback.DisplayOrder = 100001
-        fallback.Parent = currentPlayerGui
-
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.fromOffset(420, 100)
-        frame.Position = UDim2.new(0.5, -210, 0.5, -50)
-        frame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-        frame.BorderSizePixel = 1
-        frame.BorderColor3 = Color3.fromRGB(220, 80, 80)
-        frame.Parent = fallback
-
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, -20, 1, -20)
-        label.Position = UDim2.fromOffset(10, 10)
-        label.BackgroundTransparency = 1
-        label.TextColor3 = Color3.new(1, 1, 1)
-        label.TextSize = 14
-        label.Font = Enum.Font.Code
-        label.TextWrapped = true
-        label.Text = "sB Hub UI setup failed.\nCheck console for the exact error."
-        label.Parent = frame
-    end
-else
-    print("[sB Hub] GUI visibility setup complete")
+if not screen then
+    error("[sB Hub] sB_Hub_v1 was not created by ui.lua")
 end
 
-pcall(function()
-    if not gui or not titleBar then
-        error("[sB Hub] UI objects were not created")
-    end
+gui = screen
+gui.Parent = currentPlayerGui
+gui.Enabled = true
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.DisplayOrder = 100000
 
+window = window or gui:FindFirstChildWhichIsA("Frame")
+if not window then
+    error("[sB Hub] sB_Hub_v1 exists but contains no Frame window")
+end
+
+window.Parent = gui
+window.Visible = true
+window.ZIndex = 100000
+
+for _, object in ipairs(gui:GetDescendants()) do
+    if object:IsA("GuiButton") then
+        object.Active = true
+        pcall(function() object.Interactable = true end)
+        object.Selectable = true
+    end
+end
+
+print(
+    "[sB Hub] GUI state:",
+    "enabled=", tostring(gui.Enabled),
+    "parent=", tostring(gui.Parent and gui.Parent.Name),
+    "windowVisible=", tostring(window.Visible),
+    "windowAbsoluteSize=", tostring(window.AbsoluteSize),
+    "windowAbsolutePosition=", tostring(window.AbsolutePosition)
+)
+
+-- Independent render test. This is deliberately outside the original UI hierarchy.
+local renderTest = Instance.new("ScreenGui")
+renderTest.Name = "sB_Hub_RenderTest"
+renderTest.ResetOnSpawn = false
+renderTest.IgnoreGuiInset = true
+renderTest.Enabled = true
+renderTest.DisplayOrder = 2147483000
+renderTest.ZIndexBehavior = Enum.ZIndexBehavior.Global
+renderTest.Parent = currentPlayerGui
+
+local renderFrame = Instance.new("Frame")
+renderFrame.Name = "RenderFrame"
+renderFrame.Size = UDim2.fromOffset(360, 74)
+renderFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+renderFrame.Position = UDim2.fromScale(0.5, 0.5)
+renderFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+renderFrame.BorderSizePixel = 2
+renderFrame.BorderColor3 = Color3.fromRGB(90, 220, 120)
+renderFrame.ZIndex = 2147483000
+renderFrame.Parent = renderTest
+
+local renderLabel = Instance.new("TextLabel")
+renderLabel.Size = UDim2.new(1, -20, 1, -20)
+renderLabel.Position = UDim2.fromOffset(10, 10)
+renderLabel.BackgroundTransparency = 1
+renderLabel.Text = "sB Hub render test: VISIBLE\nMain UI: " .. tostring(window.Visible)
+renderLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+renderLabel.TextSize = 14
+renderLabel.Font = Enum.Font.Code
+renderLabel.TextWrapped = true
+renderLabel.ZIndex = 2147483001
+renderLabel.Parent = renderFrame
+
+local closeRender = Instance.new("TextButton")
+closeRender.Size = UDim2.fromOffset(70, 22)
+closeRender.Position = UDim2.new(1, -78, 1, -28)
+closeRender.BackgroundColor3 = Color3.fromRGB(70, 50, 50)
+closeRender.BorderSizePixel = 1
+closeRender.Text = "TEST OFF"
+closeRender.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeRender.TextSize = 9
+closeRender.Font = Enum.Font.Code
+closeRender.ZIndex = 2147483002
+closeRender.Parent = renderFrame
+closeRender.MouseButton1Click:Connect(function()
+    renderTest:Destroy()
+end)
+
+print("[sB Hub] Render test installed")
+
+if titleBar then
     local oldKill = titleBar:FindFirstChild("sB_KillHub")
     if oldKill then oldKill:Destroy() end
 
@@ -195,6 +204,7 @@ pcall(function()
         end
         pcall(function() destroyAllESP() end)
         pcall(function() if jungleBillboard then jungleBillboard:Destroy() end end)
+        pcall(function() if renderTest and renderTest.Parent then renderTest:Destroy() end end)
         pcall(function() if gui and gui.Parent then gui:Destroy() end end)
         pcall(function() if overlayGui and overlayGui.Parent then overlayGui:Destroy() end end)
         print("[sB Hub] Killed - lifecycle stopped")
@@ -202,13 +212,14 @@ pcall(function()
 
     kill.MouseButton1Click:Connect(killHub)
     kill.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then killHub() end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            killHub()
+        end
     end)
     print("[sB Hub] KILL HUB installed")
-end)
+end
 
-pcall(function()
-    if not gui or not window or not titleBar then return end
+if gui and window and titleBar then
     local UIS = game:GetService("UserInputService")
     titleBar.Active = true
     pcall(function() titleBar.Interactable = true end)
@@ -232,6 +243,6 @@ pcall(function()
     table.insert(connections, UIS.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
     end))
-end)
+end
 
 print("[sB Hub] Faithful modular build loaded")
