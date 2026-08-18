@@ -49,12 +49,27 @@ local function loadModule(fileName)
     print("[sB Hub] Downloading:", fileName)
     local source = downloadSource(fileName)
     source = source:gsub("while running do", "while running and sBHubAlive do")
+
+    if fileName == "ui.lua" then
+        -- The executor reliably delivers MouseButton1Click, so normalize the UI controls to it.
+        source = source:gsub("%.Activated", ".MouseButton1Click")
+        source = source:gsub(
+            "connect%(button%.InputBegan, function%(input%)%s*if input%.UserInputType ~= Enum%.UserInputType%.MouseButton1 then%s*return%s*end%s*setter%(not getter%(%)%)%s*render%(%)%s*saveConfig%(%)%s*end%)",
+            "connect(button.MouseButton1Click, function()%n        setter(not getter())%n        render()%n        saveConfig()%n    end)"
+        )
+        source = source:gsub(
+            "connect%(button%.InputBegan, function%(input%)%s*if input%.UserInputType ~= Enum%.UserInputType%.MouseButton1 then%s*return%s*end%s*showTab%(name%)%s*end%)",
+            "connect(button.MouseButton1Click, function()%n        showTab(name)%n    end)"
+        )
+    end
+
     if fileName == "runtime.lua" then
         source = source:gsub("[\r\n]+dragStart[ \t]*[\r\n]+startPosition", "\ndragStart = nil\nstartPosition = nil", 1)
         source = source:gsub("connect%(%s*titleBar%.InputBegan.-%end%)%s*%)", "", 1)
         source = source:gsub("connect%(%s*UserInputService%.InputChanged.-%end%)%s*%)", "", 1)
         source = source:gsub("connect%(%s*UserInputService%.InputEnded.-%end%)%s*%)", "", 1)
     end
+
     print("[sB Hub] Downloaded:", fileName, #source, "bytes")
     local chunk, compileError = loadstring(source, "@" .. fileName)
     if not chunk then
@@ -122,56 +137,6 @@ print(
     "windowAbsolutePosition=", tostring(window.AbsolutePosition)
 )
 
--- Independent render test. This is deliberately outside the original UI hierarchy.
-local renderTest = Instance.new("ScreenGui")
-renderTest.Name = "sB_Hub_RenderTest"
-renderTest.ResetOnSpawn = false
-renderTest.IgnoreGuiInset = true
-renderTest.Enabled = true
-renderTest.DisplayOrder = 2147483000
-renderTest.ZIndexBehavior = Enum.ZIndexBehavior.Global
-renderTest.Parent = currentPlayerGui
-
-local renderFrame = Instance.new("Frame")
-renderFrame.Name = "RenderFrame"
-renderFrame.Size = UDim2.fromOffset(360, 74)
-renderFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-renderFrame.Position = UDim2.fromScale(0.5, 0.5)
-renderFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-renderFrame.BorderSizePixel = 2
-renderFrame.BorderColor3 = Color3.fromRGB(90, 220, 120)
-renderFrame.ZIndex = 2147483000
-renderFrame.Parent = renderTest
-
-local renderLabel = Instance.new("TextLabel")
-renderLabel.Size = UDim2.new(1, -20, 1, -20)
-renderLabel.Position = UDim2.fromOffset(10, 10)
-renderLabel.BackgroundTransparency = 1
-renderLabel.Text = "sB Hub render test: VISIBLE\nMain UI: " .. tostring(window.Visible)
-renderLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-renderLabel.TextSize = 14
-renderLabel.Font = Enum.Font.Code
-renderLabel.TextWrapped = true
-renderLabel.ZIndex = 2147483001
-renderLabel.Parent = renderFrame
-
-local closeRender = Instance.new("TextButton")
-closeRender.Size = UDim2.fromOffset(70, 22)
-closeRender.Position = UDim2.new(1, -78, 1, -28)
-closeRender.BackgroundColor3 = Color3.fromRGB(70, 50, 50)
-closeRender.BorderSizePixel = 1
-closeRender.Text = "TEST OFF"
-closeRender.TextColor3 = Color3.fromRGB(255, 255, 255)
-closeRender.TextSize = 9
-closeRender.Font = Enum.Font.Code
-closeRender.ZIndex = 2147483002
-closeRender.Parent = renderFrame
-closeRender.MouseButton1Click:Connect(function()
-    renderTest:Destroy()
-end)
-
-print("[sB Hub] Render test installed")
-
 if titleBar then
     local oldKill = titleBar:FindFirstChild("sB_KillHub")
     if oldKill then oldKill:Destroy() end
@@ -204,18 +169,12 @@ if titleBar then
         end
         pcall(function() destroyAllESP() end)
         pcall(function() if jungleBillboard then jungleBillboard:Destroy() end end)
-        pcall(function() if renderTest and renderTest.Parent then renderTest:Destroy() end end)
         pcall(function() if gui and gui.Parent then gui:Destroy() end end)
         pcall(function() if overlayGui and overlayGui.Parent then overlayGui:Destroy() end end)
         print("[sB Hub] Killed - lifecycle stopped")
     end
 
     kill.MouseButton1Click:Connect(killHub)
-    kill.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            killHub()
-        end
-    end)
     print("[sB Hub] KILL HUB installed")
 end
 
