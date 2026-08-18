@@ -1,4 +1,4 @@
--- sB Hub v1 - GitHub loader (faithful split)
+-- sB Hub v1 - GitHub loader
 local BASE = "https://raw.githubusercontent.com/sssBHub/sB-Hub-v1/main/"
 
 sBHubAlive = false
@@ -19,8 +19,6 @@ if pg then
     if old then old:Destroy() end
     local oldOverlay = pg:FindFirstChild("sB_Overlays")
     if oldOverlay then oldOverlay:Destroy() end
-    local oldDiagnostic = pg:FindFirstChild("sB_Hub_RenderTest")
-    if oldDiagnostic then oldDiagnostic:Destroy() end
 end
 
 sBHubAlive = true
@@ -29,56 +27,92 @@ running = true
 local function downloadSource(fileName)
     local url = BASE .. fileName .. "?v=" .. tostring(os.clock()):gsub("%.", "")
     local lastError
+
     for attempt = 1, 4 do
         local ok, result = pcall(function()
             return game:HttpGet(url)
         end)
+
         if ok and type(result) == "string" and #result > 0 then
             return result
         end
+
         lastError = result
         if attempt < 4 then
             warn("[sB Hub] Download retry:", fileName, attempt + 1, "/ 4")
             task.wait(0.75 * attempt)
         end
     end
+
     error("[sB Hub] Download failed: " .. fileName .. "\n" .. tostring(lastError))
 end
 
 local function loadModule(fileName)
     print("[sB Hub] Downloading:", fileName)
+
     local source = downloadSource(fileName)
     source = source:gsub("while running do", "while running and sBHubAlive do")
 
     if fileName == "ui.lua" then
-        -- The executor reliably delivers MouseButton1Click, so normalize the UI controls to it.
-        source = source:gsub("%.Activated", ".MouseButton1Click")
+        -- Use the click signal that the executor demonstrably delivers.
+        source = source:gsub("%.Activated", function()
+            return ".MouseButton1Click"
+        end)
+
+        -- Convert toggle/tab handlers from InputBegan to MouseButton1Click.
         source = source:gsub(
-            "connect%(button%.InputBegan, function%(input%)%s*if input%.UserInputType ~= Enum%.UserInputType%.MouseButton1 then%s*return%s*end%s*setter%(not getter%(%)%)%s*render%(%)%s*saveConfig%(%)%s*end%)",
-            "connect(button.MouseButton1Click, function()%n        setter(not getter())%n        render()%n        saveConfig()%n    end)"
+            "connect%(button%.InputBegan, function%(input%)",
+            function()
+                return "connect(button.MouseButton1Click, function()"
+            end
         )
+
         source = source:gsub(
-            "connect%(button%.InputBegan, function%(input%)%s*if input%.UserInputType ~= Enum%.UserInputType%.MouseButton1 then%s*return%s*end%s*showTab%(name%)%s*end%)",
-            "connect(button.MouseButton1Click, function()%n        showTab(name)%n    end)"
+            "if input%.UserInputType ~= Enum%.UserInputType%.MouseButton1 then%s*return%s*end%s*",
+            function()
+                return ""
+            end
         )
     end
 
     if fileName == "runtime.lua" then
-        source = source:gsub("[\r\n]+dragStart[ \t]*[\r\n]+startPosition", "\ndragStart = nil\nstartPosition = nil", 1)
-        source = source:gsub("connect%(%s*titleBar%.InputBegan.-%end%)%s*%)", "", 1)
-        source = source:gsub("connect%(%s*UserInputService%.InputChanged.-%end%)%s*%)", "", 1)
-        source = source:gsub("connect%(%s*UserInputService%.InputEnded.-%end%)%s*%)", "", 1)
+        source = source:gsub(
+            "[\r\n]+dragStart[ \t]*[\r\n]+startPosition",
+            function()
+                return "\ndragStart = nil\nstartPosition = nil"
+            end,
+            1
+        )
+
+        source = source:gsub(
+            "connect%(%s*titleBar%.InputBegan.-%end%)%s*%)",
+            function() return "" end,
+            1
+        )
+        source = source:gsub(
+            "connect%(%s*UserInputService%.InputChanged.-%end%)%s*%)",
+            function() return "" end,
+            1
+        )
+        source = source:gsub(
+            "connect%(%s*UserInputService%.InputEnded.-%end%)%s*%)",
+            function() return "" end,
+            1
+        )
     end
 
     print("[sB Hub] Downloaded:", fileName, #source, "bytes")
+
     local chunk, compileError = loadstring(source, "@" .. fileName)
     if not chunk then
         error("[sB Hub] Compile failed: " .. fileName .. "\n" .. tostring(compileError))
     end
+
     local success, result = pcall(chunk)
     if not success then
         error("[sB Hub] Runtime error: " .. fileName .. "\n" .. tostring(result))
     end
+
     return result
 end
 
@@ -128,14 +162,7 @@ for _, object in ipairs(gui:GetDescendants()) do
     end
 end
 
-print(
-    "[sB Hub] GUI state:",
-    "enabled=", tostring(gui.Enabled),
-    "parent=", tostring(gui.Parent and gui.Parent.Name),
-    "windowVisible=", tostring(window.Visible),
-    "windowAbsoluteSize=", tostring(window.AbsoluteSize),
-    "windowAbsolutePosition=", tostring(window.AbsolutePosition)
-)
+print("[sB Hub] GUI state:", "enabled=", tostring(gui.Enabled), "parent=", tostring(gui.Parent and gui.Parent.Name), "windowVisible=", tostring(window.Visible))
 
 if titleBar then
     local oldKill = titleBar:FindFirstChild("sB_KillHub")
@@ -163,14 +190,19 @@ if titleBar then
         sBHubAlive = false
         running = false
         task.wait()
+
         if type(connections) == "table" then
-            for _, c in ipairs(connections) do pcall(function() c:Disconnect() end) end
+            for _, c in ipairs(connections) do
+                pcall(function() c:Disconnect() end)
+            end
             table.clear(connections)
         end
+
         pcall(function() destroyAllESP() end)
         pcall(function() if jungleBillboard then jungleBillboard:Destroy() end end)
         pcall(function() if gui and gui.Parent then gui:Destroy() end end)
         pcall(function() if overlayGui and overlayGui.Parent then overlayGui:Destroy() end end)
+
         print("[sB Hub] Killed - lifecycle stopped")
     end
 
@@ -178,10 +210,12 @@ if titleBar then
     print("[sB Hub] KILL HUB installed")
 end
 
+-- Single drag controller. The original runtime drag controller is removed above.
 if gui and window and titleBar then
     local UIS = game:GetService("UserInputService")
     titleBar.Active = true
     pcall(function() titleBar.Interactable = true end)
+
     local dragging = false
     local dragStart = nil
     local startPosition = nil
@@ -193,14 +227,25 @@ if gui and window and titleBar then
             startPosition = window.Position
         end
     end))
+
     table.insert(connections, UIS.InputChanged:Connect(function(input)
-        if not dragging or input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
+        if not dragging then return end
+        if input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
         if not window or not window.Parent then return end
+
         local delta = input.Position - dragStart
-        window.Position = UDim2.new(startPosition.X.Scale, startPosition.X.Offset + delta.X, startPosition.Y.Scale, startPosition.Y.Offset + delta.Y)
+        window.Position = UDim2.new(
+            startPosition.X.Scale,
+            startPosition.X.Offset + delta.X,
+            startPosition.Y.Scale,
+            startPosition.Y.Offset + delta.Y
+        )
     end))
+
     table.insert(connections, UIS.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
     end))
 end
 
