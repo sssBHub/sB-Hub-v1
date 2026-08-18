@@ -26,17 +26,38 @@ end)
 sBHubAlive = true
 running = true
 
-local function loadModule(fileName)
+local function downloadSource(fileName)
     local url = BASE .. fileName .. "?v=" .. tostring(os.clock()):gsub("%.", "")
+    local lastError
+
+    for attempt = 1, 4 do
+        local ok, result = pcall(function()
+            return game:HttpGet(url)
+        end)
+
+        if ok and type(result) == "string" and #result > 0 then
+            return result
+        end
+
+        lastError = result
+        if attempt < 4 then
+            warn("[sB Hub] Download retry:", fileName, attempt + 1, "/ 4")
+            task.wait(0.75 * attempt)
+        end
+    end
+
+    error(
+        "[sB Hub] Download failed: "
+        .. fileName
+        .. "\n"
+        .. tostring(lastError)
+    )
+end
+
+local function loadModule(fileName)
     print("[sB Hub] Downloading:", fileName)
 
-    local ok, source = pcall(function()
-        return game:HttpGet(url)
-    end)
-
-    if not ok then
-        error("[sB Hub] Download failed: " .. fileName .. "\n" .. tostring(source))
-    end
+    local source = downloadSource(fileName)
 
     source = source:gsub("while running do", "while running and sBHubAlive do")
 
