@@ -27,6 +27,8 @@ end
 
 if window then
     window.Visible = true
+    window.Active = true
+    window.Draggable = true
 end
 
 if tabBar then
@@ -40,11 +42,6 @@ end
 local oldKill = titleBar:FindFirstChild("sB_TestKill")
 if oldKill then
     oldKill:Destroy()
-end
-
-local oldDrag = titleBar:FindFirstChild("sB_TestDragSurface")
-if oldDrag then
-    oldDrag:Destroy()
 end
 
 local killFrame = Instance.new("Frame")
@@ -69,21 +66,7 @@ killLabel.Font = Enum.Font.Code
 killLabel.ZIndex = 2001
 killLabel.Parent = killFrame
 
-local dragSurface = Instance.new("Frame")
-dragSurface.Name = "sB_TestDragSurface"
-dragSurface.Size = UDim2.new(1, -190, 1, 0)
-dragSurface.Position = UDim2.fromOffset(0, 0)
-dragSurface.BackgroundTransparency = 1
-dragSurface.BorderSizePixel = 0
-dragSurface.Active = true
-dragSurface.Visible = true
-dragSurface.ZIndex = 1999
-dragSurface.Parent = titleBar
-
 local killed = false
-local dragging = false
-local dragStart = nil
-local startPosition = nil
 
 local function disconnectAll()
     if type(connections) == "table" then
@@ -129,49 +112,6 @@ killFrame.InputBegan:Connect(function(input)
     end
 end)
 
-dragSurface.InputBegan:Connect(function(input)
-    if killed then
-        return
-    end
-
-    if input.UserInputType ~= Enum.UserInputType.MouseButton1 then
-        return
-    end
-
-    dragging = true
-    dragStart = input.Position
-    startPosition = window.Position
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if killed or not dragging then
-        return
-    end
-
-    if input.UserInputType ~= Enum.UserInputType.MouseMovement then
-        return
-    end
-
-    if not window or not window.Parent then
-        return
-    end
-
-    local delta = input.Position - dragStart
-
-    window.Position = UDim2.new(
-        startPosition.X.Scale,
-        startPosition.X.Offset + delta.X,
-        startPosition.Y.Scale,
-        startPosition.Y.Offset + delta.Y
-    )
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = false
-    end
-end)
-
 UserInputService.InputBegan:Connect(function(input, processed)
     if processed or killed then
         return
@@ -183,4 +123,4 @@ UserInputService.InputBegan:Connect(function(input, processed)
 end)
 
 print("[sB Hub UI TEST] UI shell loaded")
-print("[sB Hub UI TEST] Kill frame visible=", killFrame.Visible, "drag surface=", dragSurface.Visible)
+print("[sB Hub UI TEST] Kill frame visible=", killFrame.Visible, "draggable=", window.Draggable, "active=", window.Active)
