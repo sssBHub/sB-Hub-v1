@@ -51,9 +51,11 @@ local function loadModule(name)
     return result
 end
 
+-- runtime.lua provides refreshCharacter(), findExercise(), and the other
+-- shared runtime functions consumed by automation.lua. Load it first.
 for _, name in ipairs({
     "config.lua", "ui_click.lua", "stats.lua", "overlays.lua",
-    "notifications.lua", "spy.lua", "esp.lua", "automation.lua", "runtime.lua"
+    "notifications.lua", "spy.lua", "esp.lua", "runtime.lua", "automation.lua"
 }) do
     loadModule(name)
 end
@@ -75,7 +77,6 @@ if tabBar then tabBar.Visible = true; tabBar.ZIndex = 1001 end
 if content then content.Visible = true; content.ZIndex = 1000 end
 if type(showTab) == "function" then pcall(function() showTab("main") end) end
 
--- Visual cleanup retained from the working UI shell.
 if sizeSpeedGroup then sizeSpeedGroup.Size = UDim2.fromOffset(230, 260); sizeSpeedGroup.ClipsDescendants = false end
 if sizeModeLabel and sizeMode then sizeModeLabel.Position = UDim2.fromOffset(8, 30); sizeMode.Position = UDim2.fromOffset(98, 28) end
 if sizeCustom then sizeCustom.Position = UDim2.fromOffset(8, 81) end
@@ -86,7 +87,6 @@ if overlayGroup then overlayGroup.Size = UDim2.fromOffset(230, 180) end
 if goalGroup then goalGroup.Size = UDim2.fromOffset(230, 180) end
 if hotkeyGroup and hotkeyScroll then hotkeyGroup.Size = UDim2.fromOffset(470, 340); hotkeyScroll.Size = UDim2.fromOffset(450, 300) end
 
--- Disable native TextButton input so its old callbacks cannot double-fire.
 for _, object in ipairs(gui:GetDescendants()) do
     if object:IsA("GuiButton") then
         object.Active = false
@@ -119,7 +119,6 @@ local function addSurface(target, callback, name)
     return surface
 end
 
--- Tabs.
 for tabName, button in pairs(tabs or {}) do
     addSurface(button, function() showTab(tabName) end, "Tab_" .. tabName)
 end
@@ -218,7 +217,6 @@ if refreshSpy then
     end, "SpyRefresh")
 end
 
--- Kill Hub is inside the main GUI title bar.
 if titleBar then
     local oldKill = titleBar:FindFirstChild("sB_KillHub")
     if oldKill then oldKill:Destroy() end
@@ -269,7 +267,7 @@ if titleBar then
     end)
 end
 
-print("[sB Hub] Clean control-input build loaded")
+print("[sB Hub] Runtime-before-automation build loaded")
 print("[sB Hub] Drag mode: built-in")
 print("[sB Hub] KILL HUB installed")
 print("[sB Hub] Faithful modular build loaded")
