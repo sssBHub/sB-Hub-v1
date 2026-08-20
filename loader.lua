@@ -59,25 +59,20 @@ local function loadModule(fileName)
 
     local source = downloadSource(fileName)
 
+    -- Keep every background loop tied to the shared lifecycle flag.
     source = source:gsub("while running do", function()
         return "while running and sBHubAlive do"
     end)
 
-    if fileName == "runtime.lua" then
+    -- The executor accepts GuiObject/InputBegan reliably, while some
+    -- MouseButton1Click connections are not being delivered consistently.
+    -- Convert modular UI button handlers before compilation.
+    if fileName == "ui_click.lua" then
         source = source:gsub(
-            "connect%(%s*titleBar%.InputBegan.-%end%)%s*%)",
-            function() return "" end,
-            1
-        )
-        source = source:gsub(
-            "connect%(%s*UserInputService%.InputChanged.-%end%)%s*%)",
-            function() return "" end,
-            1
-        )
-        source = source:gsub(
-            "connect%(%s*UserInputService%.InputEnded.-%end%)%s*%)",
-            function() return "" end,
-            1
+            "connect%(([%a_][%w_]*)%.MouseButton1Click,%s*function%(",
+            function(objectName)
+                return "connect(" .. objectName .. ".InputBegan, function(input)\n    if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end\n"
+            end
         )
     end
 
