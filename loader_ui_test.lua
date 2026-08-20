@@ -44,31 +44,37 @@ end
 local UserInputService = game:GetService("UserInputService")
 local killed = false
 
--- Put Kill Hub directly inside the same visible ScreenGui/window as the working UI.
-local oldKill = titleBar:FindFirstChild("sB_UITestKill")
+-- Kill control is a plain Frame so it uses the same InputBegan path as dragging.
+local oldKill = window:FindFirstChild("sB_UITestKill")
 if oldKill then
     oldKill:Destroy()
 end
 
-local killButton = Instance.new("TextButton")
+local killButton = Instance.new("Frame")
 killButton.Name = "sB_UITestKill"
-killButton.Size = UDim2.fromOffset(92, 24)
-killButton.Position = UDim2.new(1, -190, 0, 5)
-killButton.BackgroundColor3 = GUI_COLORS.danger
+killButton.Size = UDim2.fromOffset(120, 32)
+killButton.Position = UDim2.new(1, -132, 1, -44)
+killButton.BackgroundColor3 = Color3.fromRGB(150, 45, 45)
 killButton.BorderSizePixel = 1
-killButton.BorderColor3 = GUI_COLORS.border
-killButton.Text = "KILL HUB"
-killButton.TextColor3 = Color3.new(1, 1, 1)
-killButton.TextSize = 10
-killButton.Font = Enum.Font.Code
-killButton.AutoButtonColor = true
+killButton.BorderColor3 = Color3.fromRGB(220, 220, 220)
 killButton.Active = true
-killButton.Selectable = true
 killButton.Visible = true
-killButton.ZIndex = 2000
-killButton.Parent = titleBar
+killButton.ZIndex = 5000
+killButton.Parent = window
 
-titleBar.Active = true
+local killLabel = Instance.new("TextLabel")
+killLabel.Name = "Label"
+killLabel.Size = UDim2.fromScale(1, 1)
+killLabel.BackgroundTransparency = 1
+killLabel.Text = "KILL HUB"
+killLabel.TextColor3 = Color3.new(1, 1, 1)
+killLabel.TextSize = 11
+killLabel.Font = Enum.Font.Code
+killLabel.TextXAlignment = Enum.TextXAlignment.Center
+killLabel.TextYAlignment = Enum.TextYAlignment.Center
+killLabel.Active = false
+killLabel.ZIndex = 5001
+killLabel.Parent = killButton
 
 local function killHub()
     if killed then return end
@@ -97,7 +103,12 @@ local function killHub()
     print("[sB Hub UI TEST] Killed")
 end
 
-shellConnect(killButton.MouseButton1Click, killHub)
+shellConnect(killButton.InputBegan, function(input)
+    if killed then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        killHub()
+    end
+end)
 
 shellConnect(UserInputService.InputBegan, function(input, processed)
     if processed or killed then return end
@@ -111,21 +122,13 @@ local dragging = false
 local dragStart = nil
 local startPosition = nil
 
+titleBar.Active = true
 shellConnect(titleBar.InputBegan, function(input)
     if killed then return end
     if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
 
-    local p = input.Position
-    local bp = killButton.AbsolutePosition
-    local bs = killButton.AbsoluteSize
-
-    if p.X >= bp.X and p.X <= bp.X + bs.X
-        and p.Y >= bp.Y and p.Y <= bp.Y + bs.Y then
-        return
-    end
-
     dragging = true
-    dragStart = p
+    dragStart = input.Position
     startPosition = window.Position
 end)
 
