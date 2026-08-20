@@ -51,9 +51,9 @@ local function loadModule(name)
     return result
 end
 
--- The original monolithic source defines the automation helpers before the
--- runtime/status loop. runtime.lua is therefore loaded LAST because it calls
--- functions supplied by stats/notifications/automation and other modules.
+-- This order matches the original monolithic source dependencies.
+-- automation defines refreshCharacter/findExercise before its task loops start;
+-- runtime consumes those functions and is therefore intentionally last.
 for _, name in ipairs({
     "config.lua", "ui_click.lua", "stats.lua", "overlays.lua",
     "notifications.lua", "spy.lua", "esp.lua", "automation.lua", "runtime.lua"
@@ -268,7 +268,7 @@ if titleBar then
     end)
 end
 
-print("[sB Hub] Runtime-last dependency order loaded")
+print("[sB Hub] Automation-before-runtime build loaded")
 print("[sB Hub] Drag mode: built-in")
 print("[sB Hub] KILL HUB installed")
 print("[sB Hub] Faithful modular build loaded")
