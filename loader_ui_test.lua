@@ -123,5 +123,68 @@ UserInputService.InputBegan:Connect(function(input, processed)
     end
 end)
 
+-- Dedicated drag handler. It belongs to this shell only and leaves KILL HUB out of drag hit-testing.
+titleBar.Active = true
+
+local dragging = false
+local dragStart = nil
+local startPosition = nil
+
+local function pointInside(guiObject, point)
+    local p = guiObject.AbsolutePosition
+    local s = guiObject.AbsoluteSize
+    return point.X >= p.X
+        and point.X <= p.X + s.X
+        and point.Y >= p.Y
+        and point.Y <= p.Y + s.Y
+end
+
+titleBar.InputBegan:Connect(function(input)
+    if killed then
+        return
+    end
+
+    if input.UserInputType ~= Enum.UserInputType.MouseButton1 then
+        return
+    end
+
+    if pointInside(killFrame, input.Position) then
+        return
+    end
+
+    dragging = true
+    dragStart = input.Position
+    startPosition = window.Position
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if killed or not dragging then
+        return
+    end
+
+    if input.UserInputType ~= Enum.UserInputType.MouseMovement then
+        return
+    end
+
+    if not window or not window.Parent then
+        return
+    end
+
+    local delta = input.Position - dragStart
+
+    window.Position = UDim2.new(
+        startPosition.X.Scale,
+        startPosition.X.Offset + delta.X,
+        startPosition.Y.Scale,
+        startPosition.Y.Offset + delta.Y
+    )
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
 print("[sB Hub UI TEST] UI shell loaded")
-print("[sB Hub UI TEST] Kill frame visible=", killFrame.Visible, "parent=", killFrame.Parent.Name, "absPos=", killFrame.AbsolutePosition, "absSize=", killFrame.AbsoluteSize)
+print("[sB Hub UI TEST] Kill frame visible=", killFrame.Visible, "parent=", killFrame.Parent.Name, "absPos=", killFrame.AbsolutePosition, "absSize=", killFrame.AbsoluteSize, "drag=", true)
