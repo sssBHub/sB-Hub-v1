@@ -35,7 +35,9 @@ local function loadModule(name)
     if not ok then error("[sB Debug] runtime failed: " .. name .. "\n" .. tostring(result)) end
 end
 
-for _, name in ipairs({"config.lua", "ui_click.lua", "stats.lua", "overlays.lua", "notifications.lua", "spy.lua", "esp.lua", "automation.lua", "runtime.lua"}) do
+-- runtime.lua must load before automation.lua because it defines the shared
+-- refreshCharacter/findExercise runtime used by Auto Train.
+for _, name in ipairs({"config.lua", "ui_click.lua", "stats.lua", "overlays.lua", "notifications.lua", "spy.lua", "esp.lua", "runtime.lua", "automation.lua"}) do
     loadModule(name)
 end
 
@@ -115,7 +117,8 @@ debug.Font = Enum.Font.Code
 debug.TextXAlignment = Enum.TextXAlignment.Left
 debug.TextYAlignment = Enum.TextYAlignment.Top
 debug.ZIndex = 5000
-debug.Parent = playerGui
+-- Parent to the actual main window so it is the bottom-left of the hub.
+debug.Parent = window
 
 local function val(obj)
     return obj and tostring(obj.Value) or "nil"
@@ -173,11 +176,10 @@ if titleBar then
             running = false
             for _, c in ipairs(clickConnections) do pcall(function() c:Disconnect() end) end
             if gui and gui.Parent then gui:Destroy() end
-            pcall(function() debug:Destroy() end)
             print("[sB Debug] killed")
         end
     end)
 end
 
 pcall(refreshCharacter)
-print("[sB Debug] Auto Train diagnostic loaded")
+print("[sB Debug] Runtime-before-automation diagnostic loaded")
