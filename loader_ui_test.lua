@@ -34,7 +34,7 @@ for _, button in pairs(tabs) do
     button.ZIndex = 11
 end
 
--- Dedicated UI-shell controls. Runtime/automation modules are intentionally
+-- Stable top-level shell controls. Runtime/automation modules are intentionally
 -- not loaded in this test.
 local shellConnections = {}
 
@@ -44,28 +44,31 @@ local function shellConnect(signal, callback)
     return connection
 end
 
--- Kill Hub button.
-local oldKill = titleBar:FindFirstChild("sB_KillHub")
+local UserInputService = game:GetService("UserInputService")
+
+-- Remove any previous shell kill button.
+local oldKill = playerGui:FindFirstChild("sB_UI_Test_Kill")
 if oldKill then
     oldKill:Destroy()
 end
 
+-- Dedicated top-level Kill Hub button so it cannot be hidden by the title bar.
 local killButton = Instance.new("TextButton")
-killButton.Name = "sB_KillHub"
-killButton.Size = UDim2.fromOffset(82, 24)
-killButton.Position = UDim2.new(1, -88, 0, 5)
+killButton.Name = "sB_UI_Test_Kill"
+killButton.Size = UDim2.fromOffset(120, 32)
+killButton.Position = UDim2.new(1, -135, 0, 15)
 killButton.BackgroundColor3 = GUI_COLORS.danger
 killButton.BorderSizePixel = 1
 killButton.BorderColor3 = GUI_COLORS.border
 killButton.Text = "KILL HUB"
 killButton.TextColor3 = GUI_COLORS.text
-killButton.TextSize = 9
+killButton.TextSize = 11
 killButton.Font = FONT
 killButton.AutoButtonColor = true
 killButton.Active = true
 killButton.Selectable = true
-killButton.ZIndex = 2000
-killButton.Parent = titleBar
+killButton.ZIndex = 100000
+killButton.Parent = playerGui
 
 local killed = false
 
@@ -90,6 +93,10 @@ local function killHub()
             end)
         end
         table.clear(connections)
+    end
+
+    if killButton and killButton.Parent then
+        killButton:Destroy()
     end
 
     if gui and gui.Parent then
@@ -122,19 +129,10 @@ shellConnect(titleBar.InputBegan, function(input)
         return
     end
 
-    if input.Position.X >= killButton.AbsolutePosition.X
-        and input.Position.X <= killButton.AbsolutePosition.X + killButton.AbsoluteSize.X
-        and input.Position.Y >= killButton.AbsolutePosition.Y
-        and input.Position.Y <= killButton.AbsolutePosition.Y + killButton.AbsoluteSize.Y then
-        return
-    end
-
     dragging = true
     dragStart = input.Position
     startPosition = window.Position
 end)
-
-local UserInputService = game:GetService("UserInputService")
 
 shellConnect(UserInputService.InputChanged, function(input)
     if not dragging or killed then
@@ -166,4 +164,4 @@ shellConnect(UserInputService.InputEnded, function(input)
 end)
 
 print("[sB Hub UI TEST] UI shell loaded")
-print("[sB Hub UI TEST] Kill button=", killButton.Visible, "titleBar=", titleBar.Visible, "main=", pages.main.Visible)
+print("[sB Hub UI TEST] Kill button=", killButton.Visible, "parent=", killButton.Parent.Name, "main=", pages.main.Visible)
