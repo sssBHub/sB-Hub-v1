@@ -12,11 +12,6 @@ local function loadFile(name)
     return chunk()
 end
 
-local oldControls = playerGui:FindFirstChild("sB_UI_Test_Controls")
-if oldControls then
-    oldControls:Destroy()
-end
-
 loadFile("config.lua")
 loadFile("ui_click.lua")
 
@@ -42,13 +37,17 @@ if content then
     content.Visible = true
 end
 
--- KILL HUB is part of the main GUI title bar.
-local killFrame = titleBar:FindFirstChild("sB_TestKill")
-if killFrame then
-    killFrame:Destroy()
+local oldKill = titleBar:FindFirstChild("sB_TestKill")
+if oldKill then
+    oldKill:Destroy()
 end
 
-killFrame = Instance.new("Frame")
+local oldDrag = titleBar:FindFirstChild("sB_TestDragSurface")
+if oldDrag then
+    oldDrag:Destroy()
+end
+
+local killFrame = Instance.new("Frame")
 killFrame.Name = "sB_TestKill"
 killFrame.Size = UDim2.fromOffset(84, 24)
 killFrame.Position = UDim2.fromOffset(276, 5)
@@ -70,15 +69,23 @@ killLabel.Font = Enum.Font.Code
 killLabel.ZIndex = 2001
 killLabel.Parent = killFrame
 
+local dragSurface = Instance.new("Frame")
+dragSurface.Name = "sB_TestDragSurface"
+dragSurface.Size = UDim2.new(1, -190, 1, 0)
+dragSurface.Position = UDim2.fromOffset(0, 0)
+dragSurface.BackgroundTransparency = 1
+dragSurface.BorderSizePixel = 0
+dragSurface.Active = true
+dragSurface.Visible = true
+dragSurface.ZIndex = 1999
+dragSurface.Parent = titleBar
+
 local killed = false
+local dragging = false
+local dragStart = nil
+local startPosition = nil
 
-local function killHub()
-    if killed then
-        return
-    end
-
-    killed = true
-
+local function disconnectAll()
     if type(connections) == "table" then
         for _, connection in ipairs(connections) do
             pcall(function()
@@ -87,6 +94,15 @@ local function killHub()
         end
         table.clear(connections)
     end
+end
+
+local function killHub()
+    if killed then
+        return
+    end
+
+    killed = true
+    disconnectAll()
 
     pcall(function()
         if gui and gui.Parent then
@@ -113,35 +129,8 @@ killFrame.InputBegan:Connect(function(input)
     end
 end)
 
--- Emergency keyboard fallback.
-UserInputService.InputBegan:Connect(function(input, processed)
-    if processed or killed then
-        return
-    end
-
-    if input.KeyCode == Enum.KeyCode.End then
-        killHub()
-        return
-    end
-end)
-
--- Dedicated drag handler. It uses the global input stream rather than
--- titleBar.InputBegan, which is unreliable when child GUI objects are present.
-local dragging = false
-local dragStart = nil
-local startPosition = nil
-
-local function pointInside(guiObject, point)
-    local p = guiObject.AbsolutePosition
-    local s = guiObject.AbsoluteSize
-    return point.X >= p.X
-        and point.X <= p.X + s.X
-        and point.Y >= p.Y
-        and point.Y <= p.Y + s.Y
-end
-
-UserInputService.InputBegan:Connect(function(input, processed)
-    if processed or killed then
+dragSurface.InputBegan:Connect(function(input)
+    if killed then
         return
     end
 
@@ -149,15 +138,9 @@ UserInputService.InputBegan:Connect(function(input, processed)
         return
     end
 
-    if pointInside(killFrame, input.Position) then
-        return
-    end
-
-    if pointInside(titleBar, input.Position) then
-        dragging = true
-        dragStart = input.Position
-        startPosition = window.Position
-    end
+    dragging = true
+    dragStart = input.Position
+    startPosition = window.Position
 end)
 
 UserInputService.InputChanged:Connect(function(input)
@@ -189,5 +172,15 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed or killed then
+        return
+    end
+
+    if input.KeyCode == Enum.KeyCode.End then
+        killHub()
+    end
+end)
+
 print("[sB Hub UI TEST] UI shell loaded")
-print("[sB Hub UI TEST] Kill frame visible=", killFrame.Visible, "parent=", killFrame.Parent.Name, "absPos=", killFrame.AbsolutePosition, "absSize=", killFrame.AbsoluteSize, "drag=", true)
+print("[sB Hub UI TEST] Kill frame visible=", killFrame.Visible, "drag surface=", dragSurface.Visible)
