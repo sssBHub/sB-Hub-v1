@@ -34,10 +34,8 @@ for _, button in pairs(tabs) do
     button.ZIndex = 11
 end
 
--- Stable top-level shell controls. Runtime/automation modules are intentionally
--- not loaded in this test.
+-- Completely independent shell controls. Runtime/automation modules are not loaded.
 local shellConnections = {}
-
 local function shellConnect(signal, callback)
     local connection = signal:Connect(callback)
     table.insert(shellConnections, connection)
@@ -46,13 +44,19 @@ end
 
 local UserInputService = game:GetService("UserInputService")
 
--- Remove any previous shell kill button.
-local oldKill = playerGui:FindFirstChild("sB_UI_Test_Kill")
-if oldKill then
-    oldKill:Destroy()
+local oldControlGui = playerGui:FindFirstChild("sB_UI_Test_Controls")
+if oldControlGui then
+    oldControlGui:Destroy()
 end
 
--- Dedicated top-level Kill Hub button so it cannot be hidden by the title bar.
+local controlGui = Instance.new("ScreenGui")
+controlGui.Name = "sB_UI_Test_Controls"
+controlGui.ResetOnSpawn = false
+controlGui.IgnoreGuiInset = true
+controlGui.DisplayOrder = 200000
+controlGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+controlGui.Parent = playerGui
+
 local killButton = Instance.new("TextButton")
 killButton.Name = "sB_UI_Test_Kill"
 killButton.Size = UDim2.fromOffset(120, 32)
@@ -67,8 +71,8 @@ killButton.Font = FONT
 killButton.AutoButtonColor = true
 killButton.Active = true
 killButton.Selectable = true
-killButton.ZIndex = 100000
-killButton.Parent = playerGui
+killButton.ZIndex = 200001
+killButton.Parent = controlGui
 
 local killed = false
 
@@ -95,24 +99,30 @@ local function killHub()
         table.clear(connections)
     end
 
-    if killButton and killButton.Parent then
-        killButton:Destroy()
-    end
+    pcall(function()
+        if controlGui and controlGui.Parent then
+            controlGui:Destroy()
+        end
+    end)
 
-    if gui and gui.Parent then
-        gui:Destroy()
-    end
+    pcall(function()
+        if gui and gui.Parent then
+            gui:Destroy()
+        end
+    end)
 
-    if overlayGui and overlayGui.Parent then
-        overlayGui:Destroy()
-    end
+    pcall(function()
+        if overlayGui and overlayGui.Parent then
+            overlayGui:Destroy()
+        end
+    end)
 
     print("[sB Hub UI TEST] Killed")
 end
 
 shellConnect(killButton.MouseButton1Click, killHub)
 
--- Single dedicated drag handler for this shell test.
+-- Dedicated drag handler owned only by this shell test.
 titleBar.Active = true
 titleBar.Selectable = true
 
