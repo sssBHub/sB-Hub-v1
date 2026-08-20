@@ -52,26 +52,28 @@ end
 local controlGui = Instance.new("ScreenGui")
 controlGui.Name = "sB_UI_Test_Controls"
 controlGui.ResetOnSpawn = false
-controlGui.IgnoreGuiInset = true
-controlGui.DisplayOrder = 200000
+controlGui.IgnoreGuiInset = false
+controlGui.DisplayOrder = 2147483646
 controlGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+controlGui.Enabled = true
 controlGui.Parent = playerGui
 
 local killButton = Instance.new("TextButton")
 killButton.Name = "sB_UI_Test_Kill"
-killButton.Size = UDim2.fromOffset(120, 32)
-killButton.Position = UDim2.new(1, -135, 0, 15)
+killButton.Size = UDim2.fromOffset(150, 42)
+killButton.Position = UDim2.fromOffset(15, 15)
 killButton.BackgroundColor3 = GUI_COLORS.danger
 killButton.BorderSizePixel = 1
 killButton.BorderColor3 = GUI_COLORS.border
 killButton.Text = "KILL HUB"
-killButton.TextColor3 = GUI_COLORS.text
-killButton.TextSize = 11
-killButton.Font = FONT
+killButton.TextColor3 = Color3.new(1, 1, 1)
+killButton.TextSize = 13
+killButton.Font = Enum.Font.Code
 killButton.AutoButtonColor = true
 killButton.Active = true
 killButton.Selectable = true
-killButton.ZIndex = 200001
+killButton.Visible = true
+killButton.ZIndex = 2147483647
 killButton.Parent = controlGui
 
 local killed = false
@@ -90,6 +92,12 @@ local function killHub()
     end
     table.clear(shellConnections)
 
+    pcall(function()
+        if controlGui and controlGui.Parent then
+            controlGui:Destroy()
+        end
+    end)
+
     if type(connections) == "table" then
         for _, connection in ipairs(connections) do
             pcall(function()
@@ -98,12 +106,6 @@ local function killHub()
         end
         table.clear(connections)
     end
-
-    pcall(function()
-        if controlGui and controlGui.Parent then
-            controlGui:Destroy()
-        end
-    end)
 
     pcall(function()
         if gui and gui.Parent then
@@ -121,6 +123,17 @@ local function killHub()
 end
 
 shellConnect(killButton.MouseButton1Click, killHub)
+
+-- Emergency keyboard fallback.
+shellConnect(UserInputService.InputBegan, function(input, processed)
+    if processed or killed then
+        return
+    end
+
+    if input.KeyCode == Enum.KeyCode.End then
+        killHub()
+    end
+end)
 
 -- Dedicated drag handler owned only by this shell test.
 titleBar.Active = true
@@ -174,4 +187,4 @@ shellConnect(UserInputService.InputEnded, function(input)
 end)
 
 print("[sB Hub UI TEST] UI shell loaded")
-print("[sB Hub UI TEST] Kill button=", killButton.Visible, "parent=", killButton.Parent.Name, "main=", pages.main.Visible)
+print("[sB Hub UI TEST] Kill button=", killButton.Visible, "enabled=", controlGui.Enabled, "parent=", killButton.Parent.Name, "pos=", killButton.AbsolutePosition, "size=", killButton.AbsoluteSize, "main=", pages.main.Visible)
