@@ -1,7 +1,6 @@
--- sB Hub v1 - native frame-input modular loader
+-- sB Hub v1 - native sibling-frame input loader
 local BASE = "https://raw.githubusercontent.com/sssBHub/sB-Hub-v1/main/"
 local Players = game:GetService("Players")
-local UIS = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
@@ -75,7 +74,7 @@ if type(showTab) == "function" then pcall(function() showTab("main") end) end
 if tabBar then tabBar.Visible = true end
 if content then content.Visible = true end
 
--- Prevent native TextButton callbacks from competing with the Frame input layer.
+-- Disable only the native button input path; the visible controls remain unchanged.
 for _, object in ipairs(gui:GetDescendants()) do
     if object:IsA("TextButton") then
         object.Active = false
@@ -85,26 +84,31 @@ end
 
 local function addClickFrame(target, callback, name)
     if not target or not target.Parent then return nil end
+
+    local parent = target.Parent
     local frame = Instance.new("Frame")
     frame.Name = "sB_Input_" .. tostring(name or target.Name)
-    frame.Size = UDim2.fromScale(1, 1)
-    frame.Position = UDim2.fromOffset(0, 0)
+    frame.Size = target.Size
+    frame.Position = target.Position
+    frame.AnchorPoint = target.AnchorPoint
+    frame.Rotation = target.Rotation
     frame.BackgroundTransparency = 1
     frame.BorderSizePixel = 0
     frame.Active = true
     frame.Visible = true
     frame.ZIndex = (target.ZIndex or 1) + 50
-    frame.Parent = target
+    frame.Parent = parent
 
     frame.InputBegan:Connect(function(input)
         if not sBHubAlive then return end
         if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
         pcall(callback)
     end)
+
     return frame
 end
 
--- Tabs: overlay each tab button with a Frame that owns the click.
+-- Tabs.
 for tabName, button in pairs(tabs or {}) do
     addClickFrame(button, function()
         if type(showTab) == "function" then showTab(tabName) end
@@ -168,7 +172,7 @@ if speedMode then
     end, "SpeedMode")
 end
 
--- Stable visual cleanup.
+-- Visual cleanup.
 if sizeSpeedGroup then sizeSpeedGroup.Size = UDim2.fromOffset(230, 260); sizeSpeedGroup.ClipsDescendants = false end
 if sizeModeLabel and sizeMode then sizeModeLabel.Position = UDim2.fromOffset(8, 30); sizeMode.Position = UDim2.fromOffset(98, 28) end
 if sizeCustom then sizeCustom.Position = UDim2.fromOffset(8, 81) end
@@ -226,7 +230,7 @@ if titleBar then
     end)
 end
 
-print("[sB Hub] Native Frame input build loaded")
+print("[sB Hub] Native sibling-frame input build loaded")
 print("[sB Hub] Drag mode: built-in")
 print("[sB Hub] KILL HUB installed")
 print("[sB Hub] Faithful modular build loaded")
