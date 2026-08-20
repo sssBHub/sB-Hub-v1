@@ -51,11 +51,12 @@ local function loadModule(name)
     return result
 end
 
--- runtime.lua provides refreshCharacter(), findExercise(), and the other
--- shared runtime functions consumed by automation.lua. Load it first.
+-- The original monolithic source defines the automation helpers before the
+-- runtime/status loop. runtime.lua is therefore loaded LAST because it calls
+-- functions supplied by stats/notifications/automation and other modules.
 for _, name in ipairs({
     "config.lua", "ui_click.lua", "stats.lua", "overlays.lua",
-    "notifications.lua", "spy.lua", "esp.lua", "runtime.lua", "automation.lua"
+    "notifications.lua", "spy.lua", "esp.lua", "automation.lua", "runtime.lua"
 }) do
     loadModule(name)
 end
@@ -267,7 +268,7 @@ if titleBar then
     end)
 end
 
-print("[sB Hub] Runtime-before-automation build loaded")
+print("[sB Hub] Runtime-last dependency order loaded")
 print("[sB Hub] Drag mode: built-in")
 print("[sB Hub] KILL HUB installed")
 print("[sB Hub] Faithful modular build loaded")
