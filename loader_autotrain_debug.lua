@@ -103,7 +103,8 @@ end
 local debug = Instance.new("TextLabel")
 debug.Name = "sB_AutoTrainDebug"
 debug.Size = UDim2.fromOffset(360, 105)
-debug.Position = UDim2.fromOffset(8, 8)
+debug.AnchorPoint = Vector2.new(0, 1)
+debug.Position = UDim2.new(0, 8, 1, -8)
 debug.BackgroundColor3 = GUI_COLORS.panel
 debug.BackgroundTransparency = 0.08
 debug.BorderSizePixel = 1
@@ -114,7 +115,7 @@ debug.Font = Enum.Font.Code
 debug.TextXAlignment = Enum.TextXAlignment.Left
 debug.TextYAlignment = Enum.TextYAlignment.Top
 debug.ZIndex = 5000
-debug.Parent = gui
+debug.Parent = playerGui
 
 local function val(obj)
     return obj and tostring(obj.Value) or "nil"
@@ -172,6 +173,7 @@ if titleBar then
             running = false
             for _, c in ipairs(clickConnections) do pcall(function() c:Disconnect() end) end
             if gui and gui.Parent then gui:Destroy() end
+            pcall(function() debug:Destroy() end)
             print("[sB Debug] killed")
         end
     end)
