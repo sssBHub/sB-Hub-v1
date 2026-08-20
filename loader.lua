@@ -6,7 +6,6 @@ local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Shared lifecycle flag used by all long-running modules.
 sBHubAlive = false
 running = false
 
@@ -60,13 +59,10 @@ local function loadModule(fileName)
 
     local source = downloadSource(fileName)
 
-    -- Long-running loops stop when the Kill Hub lifecycle flag is cleared.
     source = source:gsub("while running do", function()
         return "while running and sBHubAlive do"
     end)
 
-    -- runtime.lua used to contain its own drag implementation. The stable
-    -- loader owns dragging now, so remove only those three connection blocks.
     if fileName == "runtime.lua" then
         source = source:gsub(
             "connect%(%s*titleBar%.InputBegan.-%end%)%s*%)",
@@ -100,7 +96,6 @@ local function loadModule(fileName)
     return result
 end
 
--- UI first, read-only modules next, automation/runtime last.
 for _, moduleName in ipairs({
     "config.lua",
     "ui_click.lua",
@@ -163,7 +158,21 @@ for _, object in ipairs(gui:GetDescendants()) do
     end
 end
 
--- Visual normalization for the two panels that were cramped in the split UI.
+local function moveInputPair(parent, box, labelText, y)
+    if not parent or not box then
+        return
+    end
+
+    box.Position = UDim2.fromOffset(8, y + 16)
+
+    for _, child in ipairs(parent:GetChildren()) do
+        if child:IsA("TextLabel") and child.Text == labelText then
+            child.Position = UDim2.fromOffset(8, y)
+            break
+        end
+    end
+end
+
 if sizeSpeedGroup then
     sizeSpeedGroup.Size = UDim2.fromOffset(230, 260)
     sizeSpeedGroup.ClipsDescendants = false
@@ -174,22 +183,18 @@ if sizeModeLabel and sizeMode then
     sizeMode.Position = UDim2.fromOffset(98, 28)
 end
 
-if sizeCustom then
-    sizeCustom.Position = UDim2.fromOffset(8, 78)
-end
+moveInputPair(sizeSpeedGroup, sizeCustom, "custom size", 65)
 
 if speedModeLabel and speedMode then
-    speedModeLabel.Position = UDim2.fromOffset(8, 127)
-    speedMode.Position = UDim2.fromOffset(98, 125)
+    speedModeLabel.Position = UDim2.fromOffset(8, 114)
+    speedMode.Position = UDim2.fromOffset(98, 112)
 end
 
-if speedCustom then
-    speedCustom.Position = UDim2.fromOffset(8, 175)
-end
+moveInputPair(sizeSpeedGroup, speedCustom, "custom speed", 149)
 
 if recoveryText then
-    recoveryText.Position = UDim2.fromOffset(8, 220)
-    recoveryText.Size = UDim2.fromOffset(210, 38)
+    recoveryText.Position = UDim2.fromOffset(8, 205)
+    recoveryText.Size = UDim2.fromOffset(210, 40)
 end
 
 if overlayGroup then
@@ -205,8 +210,6 @@ if hotkeyGroup and hotkeyScroll then
     hotkeyScroll.Size = UDim2.fromOffset(450, 300)
 end
 
--- Kill control lives inside the real title bar and uses the same input path
--- that proved reliable in the UI-only shell. Built-in window dragging remains.
 if titleBar then
     local oldKill = titleBar:FindFirstChild("sB_KillHub")
     if oldKill then
