@@ -113,6 +113,7 @@ killFrame.InputBegan:Connect(function(input)
     end
 end)
 
+-- Emergency keyboard fallback.
 UserInputService.InputBegan:Connect(function(input, processed)
     if processed or killed then
         return
@@ -120,12 +121,12 @@ UserInputService.InputBegan:Connect(function(input, processed)
 
     if input.KeyCode == Enum.KeyCode.End then
         killHub()
+        return
     end
 end)
 
--- Dedicated drag handler. It belongs to this shell only and leaves KILL HUB out of drag hit-testing.
-titleBar.Active = true
-
+-- Dedicated drag handler. It uses the global input stream rather than
+-- titleBar.InputBegan, which is unreliable when child GUI objects are present.
 local dragging = false
 local dragStart = nil
 local startPosition = nil
@@ -139,8 +140,8 @@ local function pointInside(guiObject, point)
         and point.Y <= p.Y + s.Y
 end
 
-titleBar.InputBegan:Connect(function(input)
-    if killed then
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed or killed then
         return
     end
 
@@ -152,9 +153,11 @@ titleBar.InputBegan:Connect(function(input)
         return
     end
 
-    dragging = true
-    dragStart = input.Position
-    startPosition = window.Position
+    if pointInside(titleBar, input.Position) then
+        dragging = true
+        dragStart = input.Position
+        startPosition = window.Position
+    end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
